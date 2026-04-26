@@ -1,20 +1,27 @@
+import { dispatch } from "./events/dispatcher.js";
 import { WebSocketServer } from "ws";
 
 const wss = new WebSocketServer({ port: 3001 });
 
-const ws = new WebSocket("ws://localhost:3001");
+wss.on("connection", (socket) => {
+  console.log("client connected");
 
-ws.onopen = () => console.log("OPEN");
-ws.onerror = (e) => console.log("ERROR", e);
-ws.onmessage = (m) => console.log("MESSAGE", m.data);
+  // socket.on("message", (msg) => {
+  //   console.log("RAW:", msg.toString());
 
-const context = {
-  // empty for now (you fill later)
-};
-
-console.log("Moon Gardens socket running on ws://localhost:3001");
-
-
-wss.on("listening", () => {
-  console.log("WebSocket is listening");
+  //   try {
+  //     const data = JSON.parse(msg.toString());
+  //     console.log("PARSED:", data);
+  //   } catch (e) {
+  //     console.log("NOT JSON");
+  //   }
+  // });
+  socket.on("message", (msg) => {
+    const event = JSON.parse(msg.toString());
+    dispatch(event, {});
+  });
 });
+
+
+
+console.log("Moon Gardens WS running on 3001");

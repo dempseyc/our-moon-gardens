@@ -1,13 +1,18 @@
-import { handlers } from "./handlers";
-import { Event } from "./types";
+export function dispatch(event: any, context: any) {
+  switch (event.type) {
+    case "TEST":
+      console.log("TEST EVENT:", event.payload);
+      break;
 
-export function dispatch(event: Event, context: any) {
-  const handler = handlers[event.type];
+    case "MOVE":
+      console.log("MOVE EVENT:", event.payload);
+      break;
 
-  if (!handler) {
-    console.warn("No handler for", event.type);
-    return;
+    case "PLACE":
+      console.log("PLACE EVENT:", event.payload);
+      break;
+
+    default:
+      console.log("UNKNOWN EVENT:", event);
   }
-
-  return handler(event, context);
 }

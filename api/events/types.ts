@@ -90,6 +90,6 @@ export interface RawWebSocketMessage {
 }
 
 export type Event =
-  | { type: "PLACE_STICKER"; userId: string; payload: any }
-  | { type: "ENTER_MOON"; userId: string; payload: any }
-  | { type: "MOVE_USER"; userId: string; payload: any };
+  | { type: "TEST"; userId: string; payload: any }
+  | { type: "MOVE"; userId: string; payload: any }
+  | { type: "PLACE"; userId: string; payload: any };
