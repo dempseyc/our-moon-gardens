@@ -1,0 +1,11 @@
+// table stickers
+-- id (uuid)
+-- glyph_id (string)
+-- plot_id (string)
+-- x (int)
+-- y (int)
+-- z_index (int)
+-- layer (string)        -- 'immortal' | 'public'
+-- created_at (int tick)
+-- expires_at (int | null)
+-- meta (json)

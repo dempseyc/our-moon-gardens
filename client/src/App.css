@@ -1,0 +1,56 @@
+.app {
+  font-family: monospace;
+  background: #111;
+  color: #eee;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.sticker-picker {
+  display: flex;
+  gap: 10px;
+  padding: 20px;
+  flex-wrap: wrap;
+}
+
+.sticker-thumb {
+  width: 64px;
+  height: 64px;
+  border: 2px solid #333;
+  cursor: pointer;
+  object-fit: contain;
+  background: #222;
+}
+
+.sticker-thumb.selected {
+  border-color: #0f0;
+}
+
+.plot {
+  width: 500px;
+  height: 500px;
+  border: 2px solid #444;
+  position: relative;
+  background: #222;
+  margin: 20px 0;
+}
+
+.placed-sticker {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  background-size: cover;
+  background-position: center;
+}
+
+.log {
+  margin-top: 20px;
+}
+
+.log pre {
+  background: #222;
+  padding: 10px;
+  border: 1px solid #444;
+  max-height: 200px;
+  overflow-y: auto;
+}
