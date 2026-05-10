@@ -15,25 +15,36 @@ export function dispatch(event: any, context: any) {
 
     case "PLACE_STICKER":
       console.log("PLACE_STICKER EVENT:", event.payload);
-      const { plotId, sticker, x, y } = event.payload;
-      
-      // Parse plotId like "plot_0" -> 0
-      const plotNum = parseInt(plotId.replace("plot_", ""));
-      
-      // y is floor position, z is back wall position (default to 0)
-      moonHall.placeSticker(sticker, plotNum, x, y, 0);
-      
+      const { glyph_name, sprites, source_type, position, footprint } = event.payload;
+      const [plot_num, x, y, z] = position;
+
+      // Create a sticker object to place in the Great Moon Hall
+      const sticker = {
+        glyph_name,
+        sprites,
+        source_type,
+        position: [plot_num, x, y, z],
+        footprint,
+        placedAt: Date.now()
+      };
+
+      moonHall.placeSticker(sticker);
+
       console.log("Sticker placed in Great Moon Hall");
-      
+
       // Return the placed sticker event to broadcast to all clients
-      return { 
-        type: "STICKER_PLACED", 
-        payload: { plotId, sticker, x, y, placedAt: Date.now() } 
+      return {
+        type: "STICKER_PLACED",
+        payload: { sticker }
       };
 
     default:
       console.log("UNKNOWN EVENT:", event);
   }
+}
+
+export function getMoonHall() {
+  return moonHall;
 }
 
 // Broadcast message to all connected clients
