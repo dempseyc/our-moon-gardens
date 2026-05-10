@@ -45,13 +45,32 @@ const Sticker = (props) => {
   const { glyph_name, sprites, source_type, position, footprint } = props;
   // console.log("Rendering sticker:", glyph_name, "at position", position);
   return (
-    <div className="sticker" style={{ position: 'absolute', left: position[1], top: position[2] * 0.75 + 48, zIndex: position[3] }}>
-      <Glyph
-        name={glyph_name}
-        source_type={source_type}
-        sprites={sprites}
-        footprint={footprint}
-      />
+    <div className='sticker with doubles'>
+
+      <div className="sticker" style={{ position: 'absolute', left: position[1], top: position[2] * 0.75 + 48, zIndex: position[3] }}>
+        <Glyph
+          name={glyph_name}
+          source_type={source_type}
+          sprites={sprites}
+          footprint={footprint}
+        />
+      </div>
+      <div className="sticker double_left" style={{ position: 'absolute', left: position[1] - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 48, zIndex: position[3] }}>
+        <Glyph
+          name={glyph_name}
+          source_type={source_type}
+          sprites={sprites}
+          footprint={footprint}
+        />
+      </div>
+      <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 48, zIndex: position[3] }}>
+        <Glyph
+          name={glyph_name}
+          source_type={source_type}
+          sprites={sprites}
+          footprint={footprint}
+        />
+      </div>
     </div>
   );
 }
@@ -80,9 +99,10 @@ const GlyphBox = ({ onSelect }) => {
   );
 }
 
-
+const TOTAL_HALL_WIDTH = 512; // should match PLOT_SIZE in App and the width of the spritesheet for seamless looping
 const PLOT_SIZE = 512; // in pixels, should match the size of the spritesheet for simplicity  
 const CELL_SIZE = 64; // 20x20 grid in each plot
+const LOOPING_SPEED = 0.01; // how fast plot rotates while viewing
 
 function App() {
   const [ws, setWs] = useState(null);
@@ -91,6 +111,29 @@ function App() {
   const [log, setLog] = useState([]);
   const plotRef = useRef(null);
   const [snapToGrid, setSnapToGrid] = useState(true);
+
+  const looperContext = useRef({ yShift: 0, lastTime: Date.now() });
+  const [yShift, setYShift] = useState(0);
+
+  // set up animation loop to shift plot left/right for seamless looping
+  useEffect(() => {
+    const loop = () => {
+      const now = Date.now();
+      const delta = now - looperContext.current.lastTime;
+      looperContext.current.lastTime = now;
+      looperContext.current.yShift += delta * LOOPING_SPEED;
+      if (looperContext.current.yShift > TOTAL_HALL_WIDTH / 2) {
+        looperContext.current.yShift -= TOTAL_HALL_WIDTH;
+      }
+      setYShift(looperContext.current.yShift);
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }, []);
+
+  const Looper = ({ children }) => {
+    return <>{children}</>;
+  }
 
   useEffect(() => {
     const websocket = new WebSocket("ws://127.0.0.1:3001");
@@ -200,11 +243,16 @@ function App() {
       </div>
 
       <h2>Plot 0 (click to place)</h2>
-      <div className="plot" ref={plotRef} onClick={handlePlotClick} style={{ width: PLOT_SIZE, height: PLOT_SIZE }}>
-        {stickers && stickers.length > 0 && stickers.map((sticker, i) => (
-          <Sticker key={i} {...sticker} />
-        ))}
-      </div>
+      <Looper>
+        <div className="plot" style={{ width: PLOT_SIZE, height: PLOT_SIZE, overflow: 'hidden', position: 'relative' }}>
+
+          <div className="plot-contents" ref={plotRef} onClick={handlePlotClick} style={{ width: PLOT_SIZE, height: PLOT_SIZE, position: 'absolute', left: yShift }}>
+            {stickers && stickers.length > 0 && stickers.map((sticker, i) => (
+              <Sticker key={i} {...sticker} />
+            ))}
+          </div>
+        </div>
+      </Looper>
 
       <div className="log">
         <h3>Log</h3>
