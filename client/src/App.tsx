@@ -112,8 +112,8 @@ function App() {
   const plotRef = useRef(null);
   const [snapToGrid, setSnapToGrid] = useState(true);
 
-  const looperContext = useRef({ yShift: 0, lastTime: Date.now() });
-  const [yShift, setYShift] = useState(0);
+  const looperContext = useRef({ xShift: 0, lastTime: Date.now() });
+  const [xShift, setYShift] = useState(0);
 
   // set up animation loop to shift plot left/right for seamless looping
   useEffect(() => {
@@ -121,19 +121,15 @@ function App() {
       const now = Date.now();
       const delta = now - looperContext.current.lastTime;
       looperContext.current.lastTime = now;
-      looperContext.current.yShift += delta * LOOPING_SPEED;
-      if (looperContext.current.yShift > TOTAL_HALL_WIDTH / 2) {
-        looperContext.current.yShift -= TOTAL_HALL_WIDTH;
+      looperContext.current.xShift += delta * LOOPING_SPEED;
+      if (looperContext.current.xShift > TOTAL_HALL_WIDTH / 2) {
+        looperContext.current.xShift -= TOTAL_HALL_WIDTH;
       }
-      setYShift(looperContext.current.yShift);
+      setYShift(looperContext.current.xShift);
       requestAnimationFrame(loop);
     };
     requestAnimationFrame(loop);
   }, []);
-
-  const Looper = ({ children }) => {
-    return <>{children}</>;
-  }
 
   useEffect(() => {
     const websocket = new WebSocket("ws://127.0.0.1:3001");
@@ -185,17 +181,17 @@ function App() {
     }
 
     const rect = plotRef.current.getBoundingClientRect();
-    let plot_x = e.clientX - rect.left - 32;
+    let plot_x = e.clientX - rect.left - 32 - xShift;
     let plot_y = (e.clientY - rect.top - 128 - 24) * 1.33;
-    const grid_x = Math.floor(plot_x / CELL_SIZE);
-    const grid_y = Math.floor(plot_y / CELL_SIZE);
+    const grid_x = Math.floor((plot_x + 32) / CELL_SIZE);
+    const grid_y = Math.floor((plot_y + 24) / CELL_SIZE);
 
     if (snapToGrid) {
       plot_x = grid_x * CELL_SIZE;
       plot_y = grid_y * CELL_SIZE;
     }
 
-    if (plot_x < 0 || plot_x > PLOT_SIZE || plot_y < 0 || plot_y > PLOT_SIZE) {
+    if (plot_x + xShift < 0 || plot_x + xShift > PLOT_SIZE || plot_y < 0 || plot_y > PLOT_SIZE) {
       console.log("Clicked outer space");
       return;
     }
@@ -243,16 +239,14 @@ function App() {
       </div>
 
       <h2>Plot 0 (click to place)</h2>
-      <Looper>
-        <div className="plot" style={{ width: PLOT_SIZE, height: PLOT_SIZE, overflow: 'hidden', position: 'relative' }}>
+      <div className="plot" ref={plotRef} onClick={handlePlotClick} style={{ width: PLOT_SIZE, height: PLOT_SIZE, overflow: 'hidden', position: 'relative' }}>
 
-          <div className="plot-contents" ref={plotRef} onClick={handlePlotClick} style={{ width: PLOT_SIZE, height: PLOT_SIZE, position: 'absolute', left: yShift }}>
-            {stickers && stickers.length > 0 && stickers.map((sticker, i) => (
-              <Sticker key={i} {...sticker} />
-            ))}
-          </div>
+        <div className="plot-contents" style={{ width: PLOT_SIZE, height: PLOT_SIZE, position: 'absolute', left: xShift }}>
+          {stickers && stickers.length > 0 && stickers.map((sticker, i) => (
+            <Sticker key={i} {...sticker} />
+          ))}
         </div>
-      </Looper>
+      </div>
 
       <div className="log">
         <h3>Log</h3>
