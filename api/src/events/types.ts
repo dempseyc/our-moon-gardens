@@ -5,6 +5,7 @@
  */
 export enum ActionType {
   PLACE_STICKER = 'PLACE_STICKER',
+  REMOVE_STICKER = 'REMOVE_STICKER',
   ENTER_MOON = 'ENTER_MOON',
   MOVE_USER = 'MOVE_USER',
 }
@@ -58,6 +59,15 @@ export interface PlaceStickerAction extends Action {
   payload: PlaceStickerPayload;
 }
 
+export interface RemoveStickerPayload {
+  stickerId: string;
+}
+
+export interface RemoveStickerAction extends Action {
+  type: ActionType.REMOVE_STICKER;
+  payload: RemoveStickerPayload;
+}
+
 /**
  * ENTER_MOON action
  */
@@ -77,7 +87,7 @@ export interface MoveUserAction extends Action {
 /**
  * Union type for all actions
  */
-export type EventAction = PlaceStickerAction | EnterMoonAction | MoveUserAction;
+export type EventAction = PlaceStickerAction | RemoveStickerAction | EnterMoonAction | MoveUserAction;
 
 /**
  * Raw WebSocket message before parsing

@@ -28,15 +28,28 @@ export function dispatch(event: any, context: any) {
         placedAt: Date.now()
       };
 
-      moonHall.placeSticker(sticker);
+      const placedSticker = moonHall.placeSticker(sticker);
 
       console.log("Sticker placed in Great Moon Hall");
 
       // Return the placed sticker event to broadcast to all clients
       return {
         type: "STICKER_PLACED",
-        payload: { sticker }
+        payload: { sticker: placedSticker }
       };
+
+    case "REMOVE_STICKER":
+      console.log("REMOVE_STICKER EVENT:", event.payload);
+      const removalSuccess = moonHall.removeSticker(event.payload.stickerId);
+      if (removalSuccess) {
+        console.log("Sticker removed from Great Moon Hall");
+        return {
+          type: "STICKER_REMOVED",
+          payload: { stickerId: event.payload.stickerId }
+        };
+      }
+      console.log("Sticker removal failed, not found:", event.payload.stickerId);
+      return null;
 
     default:
       console.log("UNKNOWN EVENT:", event);

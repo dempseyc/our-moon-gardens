@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import './App.css';
 // @ts-ignore: allow import of JSON without declaration file
 import { NATIVE_GLYPHS } from '@shared/native_glyphs';
-import { on } from 'ws';
 
 // component for displaying a sticker, consuming a spritesheet and coordinates, or an image url
 const Glyph = (props) => {
@@ -90,7 +89,6 @@ const GlyphBox = ({ onSelect }) => {
                 sprites={sprites}
                 footprint={footprint} />
             </div>
-            <div className="sticker-label">{glyph.name}</div>
           </div>
         );
       })
@@ -107,6 +105,7 @@ const LOOPING_SPEED = 0.01; // how fast plot rotates while viewing
 function App() {
   const [ws, setWs] = useState(null);
   const [selectedGlyph, setSelectedGlyph] = useState(null);
+  const [selectedTool, setSelectedTool] = useState("select");
   const [stickers, setStickers] = useState([]);
   const [log, setLog] = useState([]);
   const plotRef = useRef(null);
@@ -161,6 +160,10 @@ function App() {
         // console.log("Received sticker placement:", data.payload);
         setStickers(prev => [...prev, data.payload.sticker]);
       }
+
+      if (data.type === "STICKER_REMOVED") {
+        setStickers(prev => prev.filter(s => s.id !== data.payload.stickerId));
+      }
     };
 
     setWs(websocket);
@@ -174,12 +177,17 @@ function App() {
     setLog(prev => [...prev.slice(-20), msg]);
   };
 
-  const handlePlotClick = (e) => {
-    if (!selectedGlyph) {
-      console.log("Select a sticker first!");
-      return;
-    }
+  const findStickerAtPlotPosition = (plot_x, plot_y) => {
+    return stickers.find((sticker) => {
+      const left = sticker.position[1];
+      const top = sticker.position[2];
+      const width = sticker.footprint?.[0] ?? 64;
+      const height = sticker.footprint?.[1] ?? 64;
+      return plot_x >= left && plot_x <= left + width && plot_y >= top && plot_y <= top + height;
+    });
+  };
 
+  const handlePlotClick = (e) => {
     const rect = plotRef.current.getBoundingClientRect();
     let plot_x = e.clientX - rect.left - 32 - xShift;
     let plot_y = (e.clientY - rect.top - 128 - 24) * 1.33;
@@ -196,14 +204,30 @@ function App() {
       return;
     }
 
-    // Add locally to indicate sticker placement immediately, before backend confirmation
-    // setStickers(prev => [...prev, {
-    //   glyph_name: selectedGlyph.name,
-    //   sprites: selectedGlyph.sprites,
-    //   source_type: selectedGlyph.source_type,
-    //   position: [0, x, y, 0],
-    //   footprint: selectedGlyph.footprint
-    // }]);
+    if (selectedTool === "erase") {
+      const stickerToRemove = findStickerAtPlotPosition(plot_x, plot_y);
+      if (!stickerToRemove) {
+        addLog("No sticker found under eraser");
+        return;
+      }
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "REMOVE_STICKER",
+          payload: {
+            stickerId: stickerToRemove.id
+          }
+        }));
+        setStickers(prev => prev.filter((sticker) => sticker.id !== stickerToRemove.id));
+        addLog("Sent REMOVE_STICKER: " + stickerToRemove.id);
+      }
+      return;
+    }
+
+    if (!selectedGlyph) {
+      console.log("Select a sticker first!");
+      return;
+    }
 
     // Send to backend
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -224,13 +248,24 @@ function App() {
   };
 
   return (
-    <div className="app">
+    <div className="app" >
       <h1>🌙 Our Moon Gardens</h1>
 
       <h2>Choose a Glyph</h2>
       <div className="sticker-picker">
         {<GlyphBox onSelect={setSelectedGlyph} />}
       </div>
+
+      <h2>ToolBox</h2>
+      <div className="toolbox">
+        <button className={selectedTool === "select" ? "tool selected" : "tool"} onClick={() => setSelectedTool("select")}>Select</button>
+        <button className={selectedTool === "erase" ? "tool selected" : "tool"} onClick={() => setSelectedTool("erase")}>Erase</button>
+      </div>
+
+      {selectedTool === "erase" && (
+        <p>Click a sticker on the plot to remove it.</p>
+      )}
+
       <div className="controls">
         <label>
           <input type="checkbox" checked={snapToGrid} onChange={() => setSnapToGrid(!snapToGrid)} />
@@ -239,7 +274,7 @@ function App() {
       </div>
 
       <h2>Plot 0 (click to place)</h2>
-      <div className="plot" ref={plotRef} onClick={handlePlotClick} style={{ width: PLOT_SIZE, height: PLOT_SIZE, overflow: 'hidden', position: 'relative' }}>
+      <div className="plot" ref={plotRef} onClick={handlePlotClick} style={{ margin: '0 auto', width: PLOT_SIZE, height: PLOT_SIZE, overflow: 'hidden', position: 'relative' }}>
 
         <div className="plot-contents" style={{ width: PLOT_SIZE, height: PLOT_SIZE, position: 'absolute', left: xShift }}>
           {stickers && stickers.length > 0 && stickers.map((sticker, i) => (

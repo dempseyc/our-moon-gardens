@@ -36,6 +36,7 @@ export interface StickerStack {
 
 // A sticker that has been placed in the Great Moon Hall
 export interface PlacedSticker {
+  id: string;
   glyph_name: string;
   sprites: any[];
   source_type: string;
@@ -72,33 +73,54 @@ export class GreatMoonHall {
    * Place a sticker in the Great Moon Hall
    * Handles wrapping on floor and back wall
    */
-  placeSticker(sticker): void {
+  placeSticker(sticker): PlacedSticker {
     const { glyph_name, sprites, source_type, position, footprint } = sticker;
     const [plot_id, x, y, z] = position;
     // Ensure plot exists
     this.ensurePlotExists(plot_id);
 
     const plot = this.plots.get(plot_id)!;
-    const id = `plot${plot_id}_${Date.now()}_${Math.random()}`;
+    const id = `sticker_${plot_id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const stackKey = `${x},${y},${z},${glyph_name}`;
     if (!plot.stickers.has(stackKey)) {
       plot.stickers.set(stackKey, { stickers: [] });
     }
     const stack = plot.stickers.get(stackKey)!;
-    stack.stickers.push({
+    const placedSticker: PlacedSticker = {
+      id,
       glyph_name: glyph_name,
       sprites,
       source_type,
       position: [plot_id, x, y, z],
       footprint,
       tick: Date.now()
-    });
+    };
+    stack.stickers.push(placedSticker);
 
     plot.population++;
     plot.lastActivity = Date.now();
 
     // Check if we need to expand
     this.checkExpansion();
+    return placedSticker;
+  }
+
+  removeSticker(stickerId: string): boolean {
+    for (const plot of this.plots.values()) {
+      for (const [stackKey, stack] of plot.stickers.entries()) {
+        const index = stack.stickers.findIndex((sticker) => sticker.id === stickerId);
+        if (index !== -1) {
+          stack.stickers.splice(index, 1);
+          if (stack.stickers.length === 0) {
+            plot.stickers.delete(stackKey);
+          }
+          plot.population = Math.max(0, plot.population - 1);
+          plot.lastActivity = Date.now();
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /**

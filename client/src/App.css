@@ -13,6 +13,41 @@
   flex-wrap: wrap;
 }
 
+.toolbox {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tool {
+  padding: 8px 14px;
+  border: 1px solid #444;
+  background: #111;
+  color: #eee;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.custom-cursor {
+  position: absolute;
+  pointer-events: none;
+  width: 32px;
+  height: 32px;
+  background-size: cover;
+  background-position: center;
+  background-color: antiquewhite;
+}
+
+.tool.selected {
+  border-color: #0f0;
+  background: #132613;
+}
+
+.plot-contents {
+  position: absolute;
+  top: 0;
+}
+
 .sticker-thumb {
   width: 64px;
   height: 64px;
