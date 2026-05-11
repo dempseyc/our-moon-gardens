@@ -33,9 +33,33 @@
   background: #132613;
 }
 
+.grid-controls {
+  display: inline-flex;
+  gap: 10px;
+  margin-left: 20px;
+}
+
+.grid-controls label {
+  cursor: pointer;
+}
+
 .plot-contents {
   position: absolute;
   top: 0;
+}
+
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  opacity: 0.3;
+}
+
+.on-grid {
+  outline: 1px dashed rgba(0, 255, 0, 0.2);
 }
 
 .coords {

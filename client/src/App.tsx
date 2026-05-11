@@ -41,13 +41,13 @@ const Glyph = (props) => {
 
 // a placed sticker, which has a glyph, and x,y, z coordinates for layering
 const Sticker = (props) => {
-  const { glyph_name, sprites, source_type, position, footprint } = props;
+  const { glyph_name, sprites, source_type, position, footprint, layer } = props;
   const spriteHeight = sprites?.[0]?.h ?? 64;
   // console.log("Rendering sticker:", glyph_name, "at position", position);
   return (
-    <div className='sticker with doubles'>
+    <div className={`sticker with doubles ${layer?.startsWith('grid') ? 'on-grid' : ''}`} data-layer={layer}>
 
-      <div className="sticker" style={{ position: 'absolute', left: position[1], top: position[2] * 0.75 + 128 - spriteHeight, zIndex: position[3] }}>
+      <div className="sticker" style={{ position: 'absolute', left: position[1], top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -55,7 +55,7 @@ const Sticker = (props) => {
           footprint={footprint}
         />
       </div>
-      <div className="sticker double_left" style={{ position: 'absolute', left: position[1] - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 128 - spriteHeight, zIndex: position[3] }}>
+      <div className="sticker double_left" style={{ position: 'absolute', left: position[1] - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -63,7 +63,7 @@ const Sticker = (props) => {
           footprint={footprint}
         />
       </div>
-      <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 128 - spriteHeight, zIndex: position[3] }}>
+      <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -135,7 +135,8 @@ const CustomCursor = ({ selectedGlyph, selectedTool, mouseCoords }) => {
 
 const TOTAL_HALL_WIDTH = 512; // should match PLOT_SIZE in App and the width of the spritesheet for seamless looping
 const PLOT_SIZE = 512; // in pixels, should match the size of the spritesheet for simplicity
-const GRID_SIZE = 16; // allow placing stickers on a grid, default 16x16 pixels which matches the smallest possible footprint size
+const GRID_OPTIONS = [64, 16];
+const DEFAULT_GRID_SIZE = 64;
 const LOOPING_SPEED = 0.01; // how fast plot rotates while viewing
 
 function App() {
@@ -146,6 +147,7 @@ function App() {
   const [log, setLog] = useState([]);
   const plotRef = useRef(null);
   const [snapToGrid, setSnapToGrid] = useState(true);
+  const [selectedGridSize, setSelectedGridSize] = useState(DEFAULT_GRID_SIZE);
 
   const looperContext = useRef({ xShift: 0, lastTime: Date.now() });
   const [xShift, setYShift] = useState(0);
@@ -242,11 +244,12 @@ function App() {
 
         // Calculate plot coordinates (relative to plot element)
         let plot_x = localX - 32 - xShift;
-        let plot_y = (localY - 128 - 24) * 1.33;
+        let plot_y = (localY - 128) * (4 / 3);
 
         // Calculate grid cell coordinates
-        const cellX = Math.floor((plot_x + 32) / GRID_SIZE);
-        const cellY = Math.floor((plot_y + 24) / GRID_SIZE);
+        const currentGridSize = selectedGridSize;
+        const cellX = Math.floor((plot_x + 32) / currentGridSize);
+        const cellY = Math.floor(plot_y / currentGridSize);
 
         setMouseCoords({
           clientX,
@@ -299,14 +302,11 @@ function App() {
   const handlePlotClick = (e) => {
     const rect = plotRef.current.getBoundingClientRect();
     let plot_x = e.clientX - rect.left - 32 - xShift;
-    let plot_y = (e.clientY - rect.top - 128 - 24) * 1.33;
-    const grid_x = Math.floor((plot_x + 32) / GRID_SIZE);
-    const grid_y = Math.floor((plot_y + 24) / GRID_SIZE);
-
-    if (snapToGrid) {
-      plot_x = grid_x * GRID_SIZE;
-      plot_y = grid_y * GRID_SIZE;
-    }
+    let plot_y = (e.clientY - rect.top - 128) * (4 / 3);
+    const currentGridSize = selectedGridSize;
+    const grid_x = Math.floor((plot_x + 32) / currentGridSize);
+    const grid_y = Math.floor(plot_y / currentGridSize);
+    plot_y = grid_y * currentGridSize;
 
     if (plot_x + xShift < 0 || plot_x + xShift > PLOT_SIZE || plot_y < 0 || plot_y > PLOT_SIZE) {
       console.log("Clicked outer space");
@@ -342,6 +342,7 @@ function App() {
     if (ws && ws.readyState === WebSocket.OPEN) {
       console.log("Placing sticker:", selectedGlyph.name, "at plot 0, x:", grid_x, "y:", grid_y);
       let plot = 0; // for now we only have one plot, but this could be dynamic in the future
+      const layer = snapToGrid ? `grid-${selectedGridSize}` : "free";
       ws.send(JSON.stringify({
         type: "PLACE_STICKER",
         payload: {
@@ -349,7 +350,8 @@ function App() {
           sprites: selectedGlyph.sprites,
           source_type: selectedGlyph.source_type,
           position: [plot, plot_x, plot_y, 0],
-          footprint: selectedGlyph.footprint
+          footprint: selectedGlyph.footprint,
+          layer
         }
       }));
       addLog("Sent PLACE_STICKER: " + selectedGlyph.name + " at (" + plot_x + "," + plot_y + ")");
@@ -380,6 +382,18 @@ function App() {
           <input type="checkbox" checked={snapToGrid} onChange={() => setSnapToGrid(!snapToGrid)} />
           Snap to Grid
         </label>
+        <div className="grid-controls">
+          {GRID_OPTIONS.map((size) => (
+            <label key={size}>
+              <input
+                type="radio"
+                checked={selectedGridSize === size}
+                onChange={() => setSelectedGridSize(size)}
+              />
+              {size}px
+            </label>
+          ))}
+        </div>
       </div>
 
       <h2>
@@ -393,6 +407,8 @@ function App() {
         )}
       </h2>
       <div className="plot" ref={plotRef} onClick={handlePlotClick} style={{ margin: '0 auto', width: PLOT_SIZE, height: PLOT_SIZE, overflow: 'hidden', position: 'relative' }}>
+
+        <div className="grid-overlay" style={{ backgroundSize: `${selectedGridSize}px ${selectedGridSize * 0.75}px`, backgroundPosition: '0px 128px' }} />
 
         <div className="plot-contents" style={{ width: PLOT_SIZE, height: PLOT_SIZE, position: 'absolute', left: xShift }}>
           {stickers && stickers.length > 0 && stickers.map((sticker, i) => (

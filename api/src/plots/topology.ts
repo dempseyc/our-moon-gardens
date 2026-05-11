@@ -42,6 +42,7 @@ export interface PlacedSticker {
   source_type: string;
   position: [number, number, number, number];
   footprint: [number, number, number];
+  layer?: string;
   tick: number;
 }
 
@@ -74,7 +75,7 @@ export class GreatMoonHall {
    * Handles wrapping on floor and back wall
    */
   placeSticker(sticker): PlacedSticker {
-    const { glyph_name, sprites, source_type, position, footprint } = sticker;
+    const { glyph_name, sprites, source_type, position, footprint, layer } = sticker;
     const [plot_id, x, y, z] = position;
     // Ensure plot exists
     this.ensurePlotExists(plot_id);
@@ -93,6 +94,7 @@ export class GreatMoonHall {
       source_type,
       position: [plot_id, x, y, z],
       footprint,
+      layer,
       tick: Date.now()
     };
     stack.stickers.push(placedSticker);
