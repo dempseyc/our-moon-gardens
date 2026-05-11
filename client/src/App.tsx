@@ -42,11 +42,12 @@ const Glyph = (props) => {
 // a placed sticker, which has a glyph, and x,y, z coordinates for layering
 const Sticker = (props) => {
   const { glyph_name, sprites, source_type, position, footprint } = props;
+  const spriteHeight = sprites?.[0]?.h ?? 64;
   // console.log("Rendering sticker:", glyph_name, "at position", position);
   return (
     <div className='sticker with doubles'>
 
-      <div className="sticker" style={{ position: 'absolute', left: position[1], top: position[2] * 0.75 + 128, zIndex: position[3] }}>
+      <div className="sticker" style={{ position: 'absolute', left: position[1], top: position[2] * 0.75 + 128 - spriteHeight, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -54,7 +55,7 @@ const Sticker = (props) => {
           footprint={footprint}
         />
       </div>
-      <div className="sticker double_left" style={{ position: 'absolute', left: position[1] - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 128, zIndex: position[3] }}>
+      <div className="sticker double_left" style={{ position: 'absolute', left: position[1] - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 128 - spriteHeight, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -62,7 +63,7 @@ const Sticker = (props) => {
           footprint={footprint}
         />
       </div>
-      <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 128, zIndex: position[3] }}>
+      <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 128 - spriteHeight, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -100,13 +101,17 @@ const GlyphBox = ({ onSelect }) => {
 const CustomCursor = ({ selectedGlyph, selectedTool, mouseCoords }) => {
   if (!mouseCoords.isOverPlot) return null;
 
+  const spriteWidth = selectedGlyph?.sprites?.[0]?.w ?? 64;
+  const spriteHeight = selectedGlyph?.sprites?.[0]?.h ?? 64;
   const cursorStyle = {
     position: 'absolute' as const,
-    left: (mouseCoords.localX ?? mouseCoords.clientX) - 16,
-    top: (mouseCoords.localY ?? mouseCoords.clientY) - 16,
+    left: (mouseCoords.localX ?? mouseCoords.clientX) - spriteWidth / 2,
+    top: (mouseCoords.localY ?? mouseCoords.clientY) - (spriteHeight - 12),
     pointerEvents: 'none' as const,
     zIndex: 1000,
-    opacity: 0.8
+    opacity: 0.8,
+    width: spriteWidth,
+    height: spriteHeight,
   };
 
   if (selectedTool === "erase") {
@@ -129,8 +134,8 @@ const CustomCursor = ({ selectedGlyph, selectedTool, mouseCoords }) => {
 };
 
 const TOTAL_HALL_WIDTH = 512; // should match PLOT_SIZE in App and the width of the spritesheet for seamless looping
-const PLOT_SIZE = 512; // in pixels, should match the size of the spritesheet for simplicity  
-const CELL_SIZE = 64; // 20x20 grid in each plot
+const PLOT_SIZE = 512; // in pixels, should match the size of the spritesheet for simplicity
+const GRID_SIZE = 16; // allow placing stickers on a grid, default 16x16 pixels which matches the smallest possible footprint size
 const LOOPING_SPEED = 0.01; // how fast plot rotates while viewing
 
 function App() {
@@ -240,8 +245,8 @@ function App() {
         let plot_y = (localY - 128 - 24) * 1.33;
 
         // Calculate grid cell coordinates
-        const cellX = Math.floor((plot_x + 32) / CELL_SIZE);
-        const cellY = Math.floor((plot_y + 24) / CELL_SIZE);
+        const cellX = Math.floor((plot_x + 32) / GRID_SIZE);
+        const cellY = Math.floor((plot_y + 24) / GRID_SIZE);
 
         setMouseCoords({
           clientX,
@@ -295,12 +300,12 @@ function App() {
     const rect = plotRef.current.getBoundingClientRect();
     let plot_x = e.clientX - rect.left - 32 - xShift;
     let plot_y = (e.clientY - rect.top - 128 - 24) * 1.33;
-    const grid_x = Math.floor((plot_x + 32) / CELL_SIZE);
-    const grid_y = Math.floor((plot_y + 24) / CELL_SIZE);
+    const grid_x = Math.floor((plot_x + 32) / GRID_SIZE);
+    const grid_y = Math.floor((plot_y + 24) / GRID_SIZE);
 
     if (snapToGrid) {
-      plot_x = grid_x * CELL_SIZE;
-      plot_y = grid_y * CELL_SIZE;
+      plot_x = grid_x * GRID_SIZE;
+      plot_y = grid_y * GRID_SIZE;
     }
 
     if (plot_x + xShift < 0 || plot_x + xShift > PLOT_SIZE || plot_y < 0 || plot_y > PLOT_SIZE) {
