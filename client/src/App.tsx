@@ -50,11 +50,13 @@ const Glyph = (props) => {
 const Sticker = (props) => {
   const { glyph_name, sprites, source_type, position, footprint, layer } = props;
   const spriteHeight = sprites?.[0]?.h ?? 64;
+  // Calculate z-index based on y position (higher y = closer, in front) and z position (higher z = in front)
+  const zIndex = position[2] + position[3] * 10;
   // console.log("Rendering sticker:", glyph_name, "at position", position);
   return (
     <div className={`sticker with doubles ${layer?.startsWith('grid') ? 'on-grid' : ''}`} data-layer={layer}>
 
-      <div className="sticker" style={{ position: 'absolute', left: position[1] + 32, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
+      <div className="sticker" style={{ position: 'absolute', left: position[1] + 32, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: zIndex }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -62,7 +64,7 @@ const Sticker = (props) => {
           footprint={footprint}
         />
       </div>
-      <div className="sticker double_left" style={{ position: 'absolute', left: position[1] + 32 - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
+      <div className="sticker double_left" style={{ position: 'absolute', left: position[1] + 32 - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: zIndex }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -70,7 +72,7 @@ const Sticker = (props) => {
           footprint={footprint}
         />
       </div>
-      <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + 32 + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
+      <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + 32 + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: zIndex }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -300,15 +302,15 @@ function App() {
       const top = sticker.position[2];
       const width = (sticker.footprint?.[0] ?? 1) * 64;
       const height = (sticker.footprint?.[1] ?? 1) * 64;
-      
+
       // Normalize plot_x to match the click detection logic
       const norm_plot_x = (plot_x + TOTAL_HALL_WIDTH) % TOTAL_HALL_WIDTH;
-      
+
       // Check original position and wrapped doubles
       const condition_original = norm_plot_x >= left && norm_plot_x < left + width && plot_y >= top && plot_y < top + height;
       const condition_double_left = (norm_plot_x + TOTAL_HALL_WIDTH) >= left && (norm_plot_x + TOTAL_HALL_WIDTH) < left + width && plot_y >= top && plot_y < top + height;
       const condition_double_right = (norm_plot_x - TOTAL_HALL_WIDTH) >= left && (norm_plot_x - TOTAL_HALL_WIDTH) < left + width && plot_y >= top && plot_y < top + height;
-      
+
       return condition_original || condition_double_left || condition_double_right;
     });
   };
@@ -430,7 +432,44 @@ function App() {
 
         <div className="grid-overlay" style={{ backgroundSize: `${selectedGridSize}px ${selectedGridSize * 0.75}px`, backgroundPosition: '0px 128px' }} />
 
+        {/* Background floor */}
+        <div
+          className="plot-floor"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 128,
+            width: PLOT_SIZE,
+            height: PLOT_SIZE * 0.75,
+            background: '#8B7355', // Grayish brown color
+            zIndex: 0,
+            pointerEvents: 'none'
+          }}
+        />
+
         <div className="plot-contents" style={{ width: PLOT_SIZE, height: PLOT_SIZE, position: 'absolute', left: xShift }}>
+          {/* Atmospheric perspective layers */}
+          {Array.from({ length: 7 }, (_, i) => {
+            const layerY = (-48 * (i + 1)); // Each layer 48px "up" (back in y space)
+            const zIndex = layerY + 400; // Lower z-index for layers further back
+            return (
+              <div
+                key={`atmosphere-${i}`}
+                className="atmospheric-layer"
+                style={{
+                  position: 'absolute',
+                  left: 0 - xShift,
+                  top: layerY * 0.75, // Convert y coordinate to screen position
+                  width: PLOT_SIZE, // 3x width to cover looping boundaries
+                  height: PLOT_SIZE,
+                  background: `rgba(100, 150, 200, ${0.1 + i * 0.01})`, // Blue atmospheric tint, increasing opacity
+                  zIndex: zIndex,
+                  pointerEvents: 'none'
+                }}
+              />
+            );
+          })}
+
           {[
             {
               glyph_name: NATIVE_STICKERS.ticker.name,
