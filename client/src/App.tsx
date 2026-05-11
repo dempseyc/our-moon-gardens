@@ -46,7 +46,7 @@ const Sticker = (props) => {
   return (
     <div className='sticker with doubles'>
 
-      <div className="sticker" style={{ position: 'absolute', left: position[1], top: position[2] * 0.75 + 48, zIndex: position[3] }}>
+      <div className="sticker" style={{ position: 'absolute', left: position[1], top: position[2] * 0.75 + 128, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -54,7 +54,7 @@ const Sticker = (props) => {
           footprint={footprint}
         />
       </div>
-      <div className="sticker double_left" style={{ position: 'absolute', left: position[1] - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 48, zIndex: position[3] }}>
+      <div className="sticker double_left" style={{ position: 'absolute', left: position[1] - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 128, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -62,7 +62,7 @@ const Sticker = (props) => {
           footprint={footprint}
         />
       </div>
-      <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 48, zIndex: position[3] }}>
+      <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 128, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -282,7 +282,12 @@ function App() {
       const top = sticker.position[2];
       const width = sticker.footprint?.[0] ?? 64;
       const height = sticker.footprint?.[1] ?? 64;
-      return plot_x >= left && plot_x <= left + width && plot_y >= top && plot_y <= top + height;
+      console.log("Checking sticker at", sticker.position, "with footprint", width, height); // fine
+      // also return a sticker at position 512 to left or right of mouse click to allow erasing by clicking on the double of a sticker that is wrapping around the plot
+      const condition_double_left = plot_x + TOTAL_HALL_WIDTH >= left && plot_x + TOTAL_HALL_WIDTH <= left + width && plot_y >= top && plot_y <= top + height;
+      const condition_double_right = plot_x - TOTAL_HALL_WIDTH >= left && plot_x - TOTAL_HALL_WIDTH <= left + width && plot_y >= top && plot_y <= top + height;
+      const condition_original = plot_x >= left && plot_x <= left + width && plot_y >= top && plot_y <= top + height;
+      return condition_original || condition_double_left || condition_double_right;
     });
   };
 
