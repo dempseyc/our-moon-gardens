@@ -97,6 +97,37 @@ const GlyphBox = ({ onSelect }) => {
   );
 }
 
+const CustomCursor = ({ selectedGlyph, selectedTool, mouseCoords }) => {
+  if (!mouseCoords.isOverPlot) return null;
+
+  const cursorStyle = {
+    position: 'absolute' as const,
+    left: (mouseCoords.localX ?? mouseCoords.clientX) - 16,
+    top: (mouseCoords.localY ?? mouseCoords.clientY) - 16,
+    pointerEvents: 'none' as const,
+    zIndex: 1000,
+    opacity: 0.8
+  };
+
+  if (selectedTool === "erase") {
+    return (
+      <div style={cursorStyle} className="custom-cursor eraser">
+        🗑️
+      </div>
+    );
+  }
+
+  if (selectedTool === "select" && selectedGlyph) {
+    return (
+      <div style={cursorStyle} className="custom-cursor glyph">
+        <Glyph {...selectedGlyph} />
+      </div>
+    );
+  }
+
+  return null;
+};
+
 const TOTAL_HALL_WIDTH = 512; // should match PLOT_SIZE in App and the width of the spritesheet for seamless looping
 const PLOT_SIZE = 512; // in pixels, should match the size of the spritesheet for simplicity  
 const CELL_SIZE = 64; // 20x20 grid in each plot
@@ -113,6 +144,19 @@ function App() {
 
   const looperContext = useRef({ xShift: 0, lastTime: Date.now() });
   const [xShift, setYShift] = useState(0);
+
+  // Mouse tracking state
+  const [mouseCoords, setMouseCoords] = useState({
+    clientX: 0,
+    clientY: 0,
+    localX: 0,
+    localY: 0,
+    plotX: 0,
+    plotY: 0,
+    cellX: 0,
+    cellY: 0,
+    isOverPlot: false
+  });
 
   // set up animation loop to shift plot left/right for seamless looping
   useEffect(() => {
@@ -172,6 +216,61 @@ function App() {
       websocket.close();
     };
   }, []);
+
+  // Mouse tracking for plot coordinates
+  useEffect(() => {
+    const plotElement = plotRef.current;
+    if (!plotElement) return;
+
+    const handleMouseMove = (e) => {
+      const rect = plotElement.getBoundingClientRect();
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+
+      // Check if mouse is over the plot
+      const isOverPlot = clientX >= rect.left && clientX <= rect.right &&
+        clientY >= rect.top && clientY <= rect.bottom;
+
+      if (isOverPlot) {
+        const localX = clientX - rect.left;
+        const localY = clientY - rect.top;
+
+        // Calculate plot coordinates (relative to plot element)
+        let plot_x = localX - 32 - xShift;
+        let plot_y = (localY - 128 - 24) * 1.33;
+
+        // Calculate grid cell coordinates
+        const cellX = Math.floor((plot_x + 32) / CELL_SIZE);
+        const cellY = Math.floor((plot_y + 24) / CELL_SIZE);
+
+        setMouseCoords({
+          clientX,
+          clientY,
+          localX,
+          localY,
+          plotX: plot_x,
+          plotY: plot_y,
+          cellX,
+          cellY,
+          isOverPlot: true
+        });
+      } else {
+        setMouseCoords(prev => ({ ...prev, isOverPlot: false }));
+      }
+    };
+
+    const handleMouseLeave = () => {
+      setMouseCoords(prev => ({ ...prev, isOverPlot: false }));
+    };
+
+    plotElement.addEventListener('mousemove', handleMouseMove);
+    plotElement.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      plotElement.removeEventListener('mousemove', handleMouseMove);
+      plotElement.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [xShift]);
 
   const addLog = (msg) => {
     setLog(prev => [...prev.slice(-20), msg]);
@@ -273,7 +372,16 @@ function App() {
         </label>
       </div>
 
-      <h2>Plot 0 (click to place)</h2>
+      <h2>
+        Plot 0 (click to place)
+        {mouseCoords.isOverPlot && (
+          <span className="coords">
+            | Client: ({Math.round(mouseCoords.clientX)}, {Math.round(mouseCoords.clientY)})
+            | Plot: ({Math.round(mouseCoords.plotX)}, {Math.round(mouseCoords.plotY)})
+            | Cell: ({mouseCoords.cellX}, {mouseCoords.cellY})
+          </span>
+        )}
+      </h2>
       <div className="plot" ref={plotRef} onClick={handlePlotClick} style={{ margin: '0 auto', width: PLOT_SIZE, height: PLOT_SIZE, overflow: 'hidden', position: 'relative' }}>
 
         <div className="plot-contents" style={{ width: PLOT_SIZE, height: PLOT_SIZE, position: 'absolute', left: xShift }}>
@@ -281,6 +389,12 @@ function App() {
             <Sticker key={i} {...sticker} />
           ))}
         </div>
+
+        <CustomCursor
+          selectedGlyph={selectedGlyph}
+          selectedTool={selectedTool}
+          mouseCoords={mouseCoords}
+        />
       </div>
 
       <div className="log">

@@ -28,16 +28,6 @@
   border-radius: 4px;
 }
 
-.custom-cursor {
-  position: absolute;
-  pointer-events: none;
-  width: 32px;
-  height: 32px;
-  background-size: cover;
-  background-position: center;
-  background-color: antiquewhite;
-}
-
 .tool.selected {
   border-color: #0f0;
   background: #132613;
@@ -46,6 +36,35 @@
 .plot-contents {
   position: absolute;
   top: 0;
+}
+
+.coords {
+  font-size: 0.8em;
+  color: #aaa;
+  margin-left: 10px;
+}
+
+.custom-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.8;
+}
+
+.custom-cursor.eraser {
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 0, 0, 0.2);
+  border-radius: 50%;
+}
+
+.custom-cursor.glyph {
+  width: 32px;
+  height: 32px;
 }
 
 .sticker-thumb {

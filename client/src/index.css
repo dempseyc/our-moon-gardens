@@ -55,9 +55,9 @@ body {
 }
 
 /* override */
-.app {
+/* .app {
   background-color: #9ca3af !important;
-}
+} */
 
 #root {
   width: 1126px;
