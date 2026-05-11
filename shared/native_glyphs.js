@@ -163,3 +163,22 @@ export const NATIVE_GLYPHS = {
         }
     ]
 }
+
+export const NATIVE_STICKERS = {
+    ticker: {
+        name: "ticker",
+        source_type: "svg",
+        getSvg: (tick) => `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#111" stroke="#5af" stroke-width="3" />
+  <text x="32" y="38" font-family="monospace" font-size="24" fill="#fff" text-anchor="middle">${tick}</text>
+</svg>`,
+        footprint: [1, 1, 0]
+    }
+};
+
+// TODO: add an .svg dynamic NATIVE_GLYPH called ticker.  It will be used to show current tick of the plot, is a member of a new Object: NATIVE_STICKERS.
+// NATIVE_STICKERS essentially are permanent plot features that can be interacted with in special ways, but not placed or removed by players. 
+// They are defined by the client and rendered by the client.  Each plot.stickers will have a list of NATIVE_STICKERS that should be rendered on it, and the client will handle the rest.
+// They could be used for things like a clock, a weather display, or other dynamic elements that add life to the moon 
+// without requiring server resources.

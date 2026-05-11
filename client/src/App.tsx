@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 // @ts-ignore: allow import of CSS without declaration file
 import './App.css';
 // @ts-ignore: allow import of JSON without declaration file
-import { NATIVE_GLYPHS } from '@shared/native_glyphs';
+import { NATIVE_GLYPHS, NATIVE_STICKERS } from '@shared/native_glyphs';
 
 // component for displaying a sticker, consuming a spritesheet and coordinates, or an image url
 const Glyph = (props) => {
@@ -35,6 +35,13 @@ const Glyph = (props) => {
       <div className="sticker" style={{ backgroundImage: `url(${sprites[0]})`, width: imgSize.width, height: imgSize.height, backgroundSize: 'contain', backgroundRepeat: 'no-repeat' }} />
     );
   }
+  else if (source_type === "svg") {
+    const svg = sprites[0] || "";
+    const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    return (
+      <div className="sticker" style={{ backgroundImage: `url("${svgUrl}")`, width: 64, height: 64, backgroundSize: 'contain', backgroundRepeat: 'no-repeat' }} />
+    );
+  }
   else console.error("Unknown source_type for glyph: " + name);
   return null;
 };
@@ -47,7 +54,7 @@ const Sticker = (props) => {
   return (
     <div className={`sticker with doubles ${layer?.startsWith('grid') ? 'on-grid' : ''}`} data-layer={layer}>
 
-      <div className="sticker" style={{ position: 'absolute', left: position[1], top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
+      <div className="sticker" style={{ position: 'absolute', left: position[1] + 32, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -55,7 +62,7 @@ const Sticker = (props) => {
           footprint={footprint}
         />
       </div>
-      <div className="sticker double_left" style={{ position: 'absolute', left: position[1] - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
+      <div className="sticker double_left" style={{ position: 'absolute', left: position[1] + 32 - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -63,7 +70,7 @@ const Sticker = (props) => {
           footprint={footprint}
         />
       </div>
-      <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
+      <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + 32 + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: position[3] }}>
         <Glyph
           name={glyph_name}
           source_type={source_type}
@@ -148,6 +155,7 @@ function App() {
   const plotRef = useRef(null);
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [selectedGridSize, setSelectedGridSize] = useState(DEFAULT_GRID_SIZE);
+  const [currentTick, setCurrentTick] = useState(0);
 
   const looperContext = useRef({ xShift: 0, lastTime: Date.now() });
   const [xShift, setYShift] = useState(0);
@@ -244,6 +252,8 @@ function App() {
 
         // Calculate plot coordinates (relative to plot element)
         let plot_x = localX - 32 - xShift;
+        let normalized_x = (plot_x + TOTAL_HALL_WIDTH) % TOTAL_HALL_WIDTH;
+        plot_x = normalized_x;
         let plot_y = (localY - 128) * (4 / 3);
 
         // Calculate grid cell coordinates
@@ -288,27 +298,34 @@ function App() {
     return stickers.find((sticker) => {
       const left = sticker.position[1];
       const top = sticker.position[2];
-      const width = sticker.footprint?.[0] ?? 64;
-      const height = sticker.footprint?.[1] ?? 64;
-      console.log("Checking sticker at", sticker.position, "with footprint", width, height); // fine
-      // also return a sticker at position 512 to left or right of mouse click to allow erasing by clicking on the double of a sticker that is wrapping around the plot
-      const condition_double_left = plot_x + TOTAL_HALL_WIDTH >= left && plot_x + TOTAL_HALL_WIDTH <= left + width && plot_y >= top && plot_y <= top + height;
-      const condition_double_right = plot_x - TOTAL_HALL_WIDTH >= left && plot_x - TOTAL_HALL_WIDTH <= left + width && plot_y >= top && plot_y <= top + height;
-      const condition_original = plot_x >= left && plot_x <= left + width && plot_y >= top && plot_y <= top + height;
+      const width = (sticker.footprint?.[0] ?? 1) * 64;
+      const height = (sticker.footprint?.[1] ?? 1) * 64;
+      
+      // Normalize plot_x to match the click detection logic
+      const norm_plot_x = (plot_x + TOTAL_HALL_WIDTH) % TOTAL_HALL_WIDTH;
+      
+      // Check original position and wrapped doubles
+      const condition_original = norm_plot_x >= left && norm_plot_x < left + width && plot_y >= top && plot_y < top + height;
+      const condition_double_left = (norm_plot_x + TOTAL_HALL_WIDTH) >= left && (norm_plot_x + TOTAL_HALL_WIDTH) < left + width && plot_y >= top && plot_y < top + height;
+      const condition_double_right = (norm_plot_x - TOTAL_HALL_WIDTH) >= left && (norm_plot_x - TOTAL_HALL_WIDTH) < left + width && plot_y >= top && plot_y < top + height;
+      
       return condition_original || condition_double_left || condition_double_right;
     });
   };
 
   const handlePlotClick = (e) => {
     const rect = plotRef.current.getBoundingClientRect();
-    let plot_x = e.clientX - rect.left - 32 - xShift;
-    let plot_y = (e.clientY - rect.top - 128) * (4 / 3);
+
+    const normalized_x = (e.clientX - rect.left - 32 - xShift + TOTAL_HALL_WIDTH) % TOTAL_HALL_WIDTH;
+    let plot_x = normalized_x;
+    let plot_y = (e.clientY - rect.top - 128) * (4 / 3); // correct for the y scaling of the plot
+
     const currentGridSize = selectedGridSize;
     const grid_x = Math.floor((plot_x + 32) / currentGridSize);
     const grid_y = Math.floor(plot_y / currentGridSize);
     plot_y = grid_y * currentGridSize;
 
-    if (plot_x + xShift < 0 || plot_x + xShift > PLOT_SIZE || plot_y < 0 || plot_y > PLOT_SIZE) {
+    if (plot_x < 0 || plot_x > PLOT_SIZE || plot_y < 0 || plot_y > PLOT_SIZE) {
       console.log("Clicked outer space");
       return;
     }
@@ -328,6 +345,7 @@ function App() {
           }
         }));
         setStickers(prev => prev.filter((sticker) => sticker.id !== stickerToRemove.id));
+        setCurrentTick(tick => tick + 1);
         addLog("Sent REMOVE_STICKER: " + stickerToRemove.id);
       }
       return;
@@ -343,17 +361,19 @@ function App() {
       console.log("Placing sticker:", selectedGlyph.name, "at plot 0, x:", grid_x, "y:", grid_y);
       let plot = 0; // for now we only have one plot, but this could be dynamic in the future
       const layer = snapToGrid ? `grid-${selectedGridSize}` : "free";
+      const position = snapToGrid ? [plot, grid_x * currentGridSize - 32, grid_y * currentGridSize, 0] : [plot, plot_x, plot_y, 0];
       ws.send(JSON.stringify({
         type: "PLACE_STICKER",
         payload: {
           glyph_name: selectedGlyph.name,
           sprites: selectedGlyph.sprites,
           source_type: selectedGlyph.source_type,
-          position: [plot, plot_x, plot_y, 0],
+          position: position,
           footprint: selectedGlyph.footprint,
           layer
         }
       }));
+      setCurrentTick(tick => tick + 1);
       addLog("Sent PLACE_STICKER: " + selectedGlyph.name + " at (" + plot_x + "," + plot_y + ")");
     }
   };
@@ -411,6 +431,18 @@ function App() {
         <div className="grid-overlay" style={{ backgroundSize: `${selectedGridSize}px ${selectedGridSize * 0.75}px`, backgroundPosition: '0px 128px' }} />
 
         <div className="plot-contents" style={{ width: PLOT_SIZE, height: PLOT_SIZE, position: 'absolute', left: xShift }}>
+          {[
+            {
+              glyph_name: NATIVE_STICKERS.ticker.name,
+              source_type: NATIVE_STICKERS.ticker.source_type,
+              sprites: [NATIVE_STICKERS.ticker.getSvg(currentTick)],
+              footprint: NATIVE_STICKERS.ticker.footprint,
+              position: [0, 16, 0, 0],
+              layer: 'native'
+            }
+          ].map((sticker, i) => (
+            <Sticker key={`native-${i}`} {...sticker} />
+          ))}
           {stickers && stickers.length > 0 && stickers.map((sticker, i) => (
             <Sticker key={i} {...sticker} />
           ))}
