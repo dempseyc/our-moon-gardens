@@ -39,7 +39,7 @@ const Glyph = (props) => {
     const svg = sprites[0] || "";
     const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
     return (
-      <div className="sticker" style={{ backgroundImage: `url("${svgUrl}")`, width: 64, height: 64, backgroundSize: 'contain', backgroundRepeat: 'no-repeat' }} />
+      <div className="sticker" style={{ backgroundImage: `url("${svgUrl}")`, width: 240, height: 48, backgroundSize: 'contain', backgroundRepeat: 'no-repeat' }} />
     );
   }
   else console.error("Unknown source_type for glyph: " + name);
@@ -51,7 +51,8 @@ const Sticker = (props) => {
   const { glyph_name, sprites, source_type, position, footprint, layer } = props;
   const spriteHeight = sprites?.[0]?.h ?? 64;
   // Calculate z-index based on y position (higher y = closer, in front) and z position (higher z = in front)
-  const zIndex = position[2] + position[3] * 10;
+  const baseZIndex = position[2] + position[3] * 10;
+  const zIndex = layer === 'native' ? 0 : baseZIndex;
   // console.log("Rendering sticker:", glyph_name, "at position", position);
   return (
     <div className={`sticker with doubles ${layer?.startsWith('grid') ? 'on-grid' : ''}`} data-layer={layer}>
@@ -216,6 +217,11 @@ function App() {
         setStickers(data.payload)
       }
 
+      // Handle tick updates
+      if (data.type === "TICK_UPDATE") {
+        setCurrentTick(data.payload.tick);
+      }
+
       // Handle broadcasted sticker placements
       if (data.type === "STICKER_PLACED") {
         // console.log("Received sticker placement:", data.payload);
@@ -347,7 +353,6 @@ function App() {
           }
         }));
         setStickers(prev => prev.filter((sticker) => sticker.id !== stickerToRemove.id));
-        setCurrentTick(tick => tick + 1);
         addLog("Sent REMOVE_STICKER: " + stickerToRemove.id);
       }
       return;
@@ -375,7 +380,6 @@ function App() {
           layer
         }
       }));
-      setCurrentTick(tick => tick + 1);
       addLog("Sent PLACE_STICKER: " + selectedGlyph.name + " at (" + plot_x + "," + plot_y + ")");
     }
   };
@@ -449,7 +453,7 @@ function App() {
 
         <div className="plot-contents" style={{ width: PLOT_SIZE, height: PLOT_SIZE, position: 'absolute', left: xShift }}>
           {/* Atmospheric perspective layers */}
-          {Array.from({ length: 7 }, (_, i) => {
+          {Array.from({ length: 11 }, (_, i) => {
             const layerY = (-48 * (i + 1)); // Each layer 48px "up" (back in y space)
             const zIndex = layerY + 400; // Lower z-index for layers further back
             return (
@@ -462,7 +466,7 @@ function App() {
                   top: layerY * 0.75, // Convert y coordinate to screen position
                   width: PLOT_SIZE, // 3x width to cover looping boundaries
                   height: PLOT_SIZE,
-                  background: `rgba(100, 150, 200, ${0.1 + i * 0.01})`, // Blue atmospheric tint, increasing opacity
+                  background: `rgba(100, 150, 200, ${0.1 + i * 0.005})`, // Blue atmospheric tint, increasing opacity
                   zIndex: zIndex,
                   pointerEvents: 'none'
                 }}
@@ -476,7 +480,7 @@ function App() {
               source_type: NATIVE_STICKERS.ticker.source_type,
               sprites: [NATIVE_STICKERS.ticker.getSvg(currentTick)],
               footprint: NATIVE_STICKERS.ticker.footprint,
-              position: [0, 16, 0, 0],
+              position: [0, 0, -48, 0],
               layer: 'native'
             }
           ].map((sticker, i) => (
