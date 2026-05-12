@@ -15,7 +15,7 @@ export function dispatch(event: any, context: any) {
 
     case "PLACE_STICKER":
       console.log("PLACE_STICKER EVENT:", event.payload);
-      const { glyph_name, sprites, source_type, position, footprint, layer } = event.payload;
+      const { glyph_name, sprites, source_type, position, footprint, layer, displayWidth } = event.payload;
       const [plot_num, x, y, z] = position;
 
       // Create a sticker object to place in the Great Moon Hall
@@ -26,6 +26,7 @@ export function dispatch(event: any, context: any) {
         position: [plot_num, x, y, z],
         footprint,
         layer,
+        displayWidth,
         placedAt: Date.now()
       };
 

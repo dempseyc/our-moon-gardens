@@ -31,8 +31,11 @@ const Glyph = (props) => {
       img.src = sprites[0];
     }, [sprites]);
 
+    const displayWidth = props.displayWidth ?? (source_type === 'link' ? 64 : imgSize.width);
+    const displayHeight = displayWidth * (imgSize.height / imgSize.width);
+
     return (
-      <div className="sticker" style={{ backgroundImage: `url(${sprites[0]})`, width: imgSize.width, height: imgSize.height, backgroundSize: 'contain', backgroundRepeat: 'no-repeat' }} />
+      <div className="sticker" style={{ backgroundImage: `url(${sprites[0]})`, width: displayWidth, height: displayHeight, backgroundSize: 'contain', backgroundRepeat: 'no-repeat' }} />
     );
   }
   else if (source_type === "svg") {
@@ -48,7 +51,7 @@ const Glyph = (props) => {
 
 // a placed sticker, which has a glyph, and x,y, z coordinates for layering
 const Sticker = (props) => {
-  const { glyph_name, sprites, source_type, position, footprint, layer } = props;
+  const { glyph_name, sprites, source_type, position, footprint, layer, displayWidth } = props;
   const spriteHeight = sprites?.[0]?.h ?? 64;
   // Calculate z-index based on y position (higher y = closer, in front) and z position (higher z = in front)
   const baseZIndex = position[2] + position[3] * 10;
@@ -63,6 +66,7 @@ const Sticker = (props) => {
           source_type={source_type}
           sprites={sprites}
           footprint={footprint}
+          displayWidth={displayWidth}
         />
       </div>
       <div className="sticker double_left" style={{ position: 'absolute', left: position[1] + 32 - TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: zIndex }}>
@@ -71,6 +75,7 @@ const Sticker = (props) => {
           source_type={source_type}
           sprites={sprites}
           footprint={footprint}
+          displayWidth={displayWidth}
         />
       </div>
       <div className="sticker double_right" style={{ position: 'absolute', left: position[1] + 32 + TOTAL_HALL_WIDTH, top: position[2] * 0.75 + 172 - spriteHeight, zIndex: zIndex }}>
@@ -79,6 +84,7 @@ const Sticker = (props) => {
           source_type={source_type}
           sprites={sprites}
           footprint={footprint}
+          displayWidth={displayWidth}
         />
       </div>
     </div>
@@ -86,25 +92,79 @@ const Sticker = (props) => {
 }
 
 
-const GlyphBox = ({ onSelect }) => {
+const GlyphBox = ({
+  onSelect,
+  searchMode,
+  searchTerm,
+  onSearchTermChange,
+  onSearch,
+  giphyResults,
+  onNext,
+  onBack,
+  currentPage,
+  hasPrevious,
+  hasNext,
+  isLoading,
+  error
+}) => {
   return (
-    <>{
-      NATIVE_GLYPHS.glyphs.map((glyph, i) => {
-        const { name, source_type, sprites, footprint } = glyph;
-        return (
-          < div key={i} >
-            <div onClick={() => onSelect(glyph)}>
-              <Glyph
-                name={name}
-                source_type={source_type}
-                sprites={sprites}
-                footprint={footprint} />
+    <div>
+      <div style={{ marginBottom: '12px' }}>
+        <label style={{ cursor: 'pointer', marginRight: '14px' }}>
+          <input type="checkbox" checked={searchMode} onChange={(e) => onSearchTermChange(null, e.target.checked)} />
+          Search Giphy
+        </label>
+        {searchMode && (
+          <span>
+            <input
+              type="text"
+              placeholder="Search stickers"
+              value={searchTerm}
+              onChange={(e) => onSearchTermChange(e.target.value)}
+              style={{ padding: '6px 10px', marginRight: '8px', width: '220px' }}
+            />
+            <button className="tool" onClick={onSearch} disabled={!searchTerm || isLoading}>Search</button>
+          </span>
+        )}
+      </div>
+
+      {searchMode ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          {error && <div style={{ color: '#f55', width: '100%' }}>{error}</div>}
+          {isLoading && <div style={{ color: '#aaa', width: '100%' }}>Loading...</div>}
+          {!isLoading && giphyResults.length === 0 && <div style={{ color: '#aaa', width: '100%' }}>No results yet.</div>}
+          {giphyResults.map((glyph, i) => (
+            <div key={i} style={{ cursor: 'pointer' }} onClick={() => onSelect(glyph)}>
+              <Glyph {...glyph} />
             </div>
-          </div>
-        );
-      })
-    }
-    </>
+          ))}
+          {giphyResults.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+              <button className="tool" onClick={onBack} disabled={!hasPrevious || isLoading}>Back</button>
+              <span style={{ color: '#ccc' }}>Page {currentPage + 1}</span>
+              <button className="tool" onClick={onNext} disabled={!hasNext || isLoading}>Next</button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          {NATIVE_GLYPHS.glyphs.map((glyph, i) => {
+            const { name, source_type, sprites, footprint } = glyph;
+            return (
+              <div key={i} style={{ cursor: 'pointer' }}>
+                <div onClick={() => onSelect(glyph)}>
+                  <Glyph
+                    name={name}
+                    source_type={source_type}
+                    sprites={sprites}
+                    footprint={footprint} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -147,6 +207,7 @@ const TOTAL_HALL_WIDTH = 512; // should match PLOT_SIZE in App and the width of 
 const PLOT_SIZE = 512; // in pixels, should match the size of the spritesheet for simplicity
 const GRID_OPTIONS = [64, 16];
 const DEFAULT_GRID_SIZE = 64;
+const GIPHY_API_KEY = 'zcWD76PK0ebuR9qfnAqHLyBkI5Rla9Yg'; // replace with your free Giphy API key if needed
 const LOOPING_SPEED = 0.01; // how fast plot rotates while viewing
 
 function App() {
@@ -159,6 +220,14 @@ function App() {
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [selectedGridSize, setSelectedGridSize] = useState(DEFAULT_GRID_SIZE);
   const [currentTick, setCurrentTick] = useState(0);
+  const [glyphSearchMode, setGlyphSearchMode] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [giphyResults, setGiphyResults] = useState([]);
+  const [giphyPages, setGiphyPages] = useState({});
+  const [giphyPage, setGiphyPage] = useState(0);
+  const [giphyTotalCount, setGiphyTotalCount] = useState(0);
+  const [isLoadingGiphy, setIsLoadingGiphy] = useState(false);
+  const [giphyError, setGiphyError] = useState(null);
 
   const looperContext = useRef({ xShift: 0, lastTime: Date.now() });
   const [xShift, setYShift] = useState(0);
@@ -298,6 +367,47 @@ function App() {
     };
   }, [xShift]);
 
+  const fetchGiphyStickers = async (term, page = 0) => {
+    if (!term) return;
+    setIsLoadingGiphy(true);
+    setGiphyError(null);
+
+    const cachedPage = giphyPages[page];
+    if (cachedPage) {
+      setGiphyResults(cachedPage);
+      setGiphyPage(page);
+      setIsLoadingGiphy(false);
+      return;
+    }
+
+    try {
+      const offset = page * 25;
+      const url = `https://api.giphy.com/v1/stickers/search?q=${encodeURIComponent(term)}&offset=${offset}&limit=25&api_key=${GIPHY_API_KEY}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Giphy fetch failed');
+      }
+
+      const results = (data.data || []).map((item) => ({
+        name: item.title || item.id,
+        source_type: 'link',
+        sprites: [item.images.fixed_width.url],
+        footprint: [1, 1, 0],
+        displayWidth: 64
+      }));
+
+      setGiphyResults(results);
+      setGiphyPage(page);
+      setGiphyPages((prev) => ({ ...prev, [page]: results }));
+      setGiphyTotalCount(data.pagination?.total_count || 0);
+    } catch (error) {
+      setGiphyError(error?.message || 'Unable to fetch Giphy stickers');
+    } finally {
+      setIsLoadingGiphy(false);
+    }
+  };
+
   const addLog = (msg) => {
     setLog(prev => [...prev.slice(-20), msg]);
   };
@@ -377,7 +487,8 @@ function App() {
           source_type: selectedGlyph.source_type,
           position: position,
           footprint: selectedGlyph.footprint,
-          layer
+          layer,
+          displayWidth: selectedGlyph.displayWidth
         }
       }));
       addLog("Sent PLACE_STICKER: " + selectedGlyph.name + " at (" + plot_x + "," + plot_y + ")");
@@ -390,7 +501,42 @@ function App() {
 
       <h2>Choose a Glyph</h2>
       <div className="sticker-picker">
-        {<GlyphBox onSelect={setSelectedGlyph} />}
+        {<GlyphBox
+          onSelect={setSelectedGlyph}
+          searchMode={glyphSearchMode}
+          searchTerm={searchTerm}
+          onSearchTermChange={(value, toggleSearch) => {
+            if (typeof toggleSearch === 'boolean') {
+              setGlyphSearchMode(toggleSearch);
+            }
+            if (typeof value === 'string') {
+              setSearchTerm(value);
+            }
+          }}
+          onSearch={() => {
+            setGiphyPages({});
+            setGiphyPage(0);
+            setGiphyTotalCount(0);
+            fetchGiphyStickers(searchTerm, 0);
+          }}
+          giphyResults={giphyResults}
+          onBack={() => {
+            if (giphyPage > 0) {
+              fetchGiphyStickers(searchTerm, giphyPage - 1);
+            }
+          }}
+          onNext={() => {
+            const nextPage = giphyPage + 1;
+            if (giphyPages[nextPage] || (nextPage * 25) < giphyTotalCount) {
+              fetchGiphyStickers(searchTerm, nextPage);
+            }
+          }}
+          currentPage={giphyPage}
+          hasPrevious={giphyPage > 0}
+          hasNext={(giphyPage + 1) * 25 < giphyTotalCount}
+          isLoading={isLoadingGiphy}
+          error={giphyError}
+        />}
       </div>
 
       <h2>ToolBox</h2>
